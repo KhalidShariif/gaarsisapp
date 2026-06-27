@@ -1,0 +1,29 @@
+class MapTileConfig {
+  static const String mapboxAccessToken = String.fromEnvironment(
+    'MAPBOX_ACCESS_TOKEN',
+  );
+  static const String googleMapsApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_API_KEY',
+  );
+
+  static String get urlTemplate {
+    if (mapboxAccessToken.isNotEmpty) {
+      return 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=$mapboxAccessToken';
+    } else if (googleMapsApiKey.isNotEmpty) {
+      return 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=$googleMapsApiKey';
+    } else {
+      return 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    }
+  }
+
+  static List<String> get subdomains {
+    if (mapboxAccessToken.isEmpty && googleMapsApiKey.isEmpty) {
+      return const ['a', 'b', 'c', 'd'];
+    }
+    return const [];
+  }
+
+  static bool get needsColorInversion {
+    return false;
+  }
+}
