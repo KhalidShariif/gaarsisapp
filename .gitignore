@@ -70,6 +70,13 @@ uploads/
 *.jpg
 *.jpeg
 *.webp
+!admin/public/**/*.svg
+!vendor/public/**/*.svg
+!customer/assets/**/*.png
+!customer/assets/**/*.jpg
+!customer/assets/**/*.jpeg
+!customer/assets/**/*.webp
+customer/assets/images/AB6AXuD*.png
 
 # Local tools/binaries
 tools/*.exe
