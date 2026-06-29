@@ -547,7 +547,7 @@ class AdminModel {
       vehicle_type, plate_number, license_number, address, dob,
       status, vendor_id, profile_picture, emergency_contact_name,
       emergency_contact_phone, guardian_name, guardian_phone,
-      guarantor_name, guarantor_phone, guarantor_address
+      sponsor_name, sponsor_phone, sponsor_address
     } = driverData;
     
     // Split full_name
@@ -571,14 +571,14 @@ class AdminModel {
     const [driverResult] = await db.query(
       `INSERT INTO drivers
       (user_id, first_name, last_name, vehicle_type, plate_number, license_number, address, dob, status, vendor_id, profile_picture,
-       emergency_contact_name, emergency_contact_phone, guardian_name, guardian_phone, guarantor_name, guarantor_phone, guarantor_address)
+       emergency_contact_name, emergency_contact_phone, guardian_name, guardian_phone, sponsor_name, sponsor_phone, sponsor_address)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId, first_name, last_name, vehicle_type, plate_number, license_number, 
         address, dob || null, status || 'offline', vendor_id || null, profile_picture || null,
         emergency_contact_name || null, emergency_contact_phone || null,
         guardian_name || null, guardian_phone || null,
-        guarantor_name || null, guarantor_phone || null, guarantor_address || null
+        sponsor_name || null, sponsor_phone || null, sponsor_address || null
       ]
     );
     return driverResult.insertId;
@@ -589,7 +589,7 @@ class AdminModel {
       full_name, email, phone, vehicle_type, plate_number, license_number, 
       address, dob, status, vendor_id, profile_picture, emergency_contact_name,
       emergency_contact_phone, guardian_name, guardian_phone,
-      guarantor_name, guarantor_phone, guarantor_address
+      sponsor_name, sponsor_phone, sponsor_address
     } = driverData;
 
     let first_name, last_name;
@@ -615,13 +615,13 @@ class AdminModel {
         , emergency_contact_phone = COALESCE(?, emergency_contact_phone)
         , guardian_name = COALESCE(?, guardian_name)
         , guardian_phone = COALESCE(?, guardian_phone)
-        , guarantor_name = COALESCE(?, guarantor_name)
-        , guarantor_phone = COALESCE(?, guarantor_phone)
-        , guarantor_address = COALESCE(?, guarantor_address)
+        , sponsor_name = COALESCE(?, sponsor_name)
+        , sponsor_phone = COALESCE(?, sponsor_phone)
+        , sponsor_address = COALESCE(?, sponsor_address)
        WHERE id = ?`,
       [first_name, last_name, vehicle_type, plate_number, license_number, address, dob, status, vendor_id, profile_picture,
        emergency_contact_name, emergency_contact_phone, guardian_name, guardian_phone,
-       guarantor_name, guarantor_phone, guarantor_address, id]
+       sponsor_name, sponsor_phone, sponsor_address, id]
     );
 
     if (email || phone) {

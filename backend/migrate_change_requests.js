@@ -15,9 +15,9 @@ const additions = {
     'emergency_contact_phone VARCHAR(50) NULL',
     'guardian_name VARCHAR(120) NULL',
     'guardian_phone VARCHAR(50) NULL',
-    'guarantor_name VARCHAR(120) NULL',
-    'guarantor_phone VARCHAR(50) NULL',
-    'guarantor_address VARCHAR(255) NULL'
+    'sponsor_name VARCHAR(120) NULL',
+    'sponsor_phone VARCHAR(50) NULL',
+    'sponsor_address VARCHAR(255) NULL'
   ],
   addresses: ['phone VARCHAR(50) NULL'],
   deliveries: [

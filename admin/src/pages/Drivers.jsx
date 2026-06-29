@@ -86,7 +86,7 @@ const DriversPage = () => {
     vendor_id: '',
     emergency_contact_name: '', emergency_contact_phone: '',
     guardian_name: '', guardian_phone: '',
-    guarantor_name: '', guarantor_phone: '', guarantor_address: ''
+    sponsor_name: '', sponsor_phone: '', sponsor_address: ''
   });
 
   const handleExport = () => {
@@ -126,7 +126,7 @@ const DriversPage = () => {
           full_name: '', username: '', email: '', phone: '',
           vehicle_type: 'Truck', plate_number: '', license_number: '', address: '', status: 'offline', vendor_id: '',
           emergency_contact_name: '', emergency_contact_phone: '', guardian_name: '', guardian_phone: '',
-          guarantor_name: '', guarantor_phone: '', guarantor_address: ''
+          sponsor_name: '', sponsor_phone: '', sponsor_address: ''
         });
         fetchDrivers();
       }
@@ -176,7 +176,7 @@ const DriversPage = () => {
       vendor_id: driver.vendor_id || '',
       emergency_contact_name: driver.emergency_contact_name || '', emergency_contact_phone: driver.emergency_contact_phone || '',
       guardian_name: driver.guardian_name || '', guardian_phone: driver.guardian_phone || '',
-      guarantor_name: driver.guarantor_name || '', guarantor_phone: driver.guarantor_phone || '', guarantor_address: driver.guarantor_address || ''
+      sponsor_name: driver.sponsor_name || '', sponsor_phone: driver.sponsor_phone || '', sponsor_address: driver.sponsor_address || ''
     });
     setShowEditModal(true);
   };
@@ -314,10 +314,10 @@ const DriversPage = () => {
                    {[
                      ['Emergency Contact Name', 'emergency_contact_name'], ['Emergency Contact Phone', 'emergency_contact_phone'],
                      ['Parent / Guardian Name', 'guardian_name'], ['Parent / Guardian Phone', 'guardian_phone'],
-                     ['Guarantor Name', 'guarantor_name'], ['Guarantor Phone', 'guarantor_phone'],
-                     ['Guarantor Address', 'guarantor_address']
+                     ['Sponsor Name', 'sponsor_name'], ['Sponsor Phone', 'sponsor_phone'],
+                     ['Sponsor Address', 'sponsor_address']
                    ].map(([label, key]) => (
-                     <div key={key} className={`space-y-2 ${key === 'guarantor_address' ? 'col-span-2' : ''}`}>
+                     <div key={key} className={`space-y-2 ${key === 'sponsor_address' ? 'col-span-2' : ''}`}>
                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">{label}</label>
                        <input required className="w-full bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-2xl py-3 px-5 text-slate-900 dark:text-white"
                          value={formData[key]} onChange={e => setFormData({...formData, [key]: e.target.value})} />
@@ -382,7 +382,7 @@ const DriversPage = () => {
                 <p><strong className="text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-widest block mb-1">Address:</strong> {selectedDriver.address || 'N/A'}</p>
                 <p><strong className="text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-widest block mb-1">Emergency Contact:</strong> {selectedDriver.emergency_contact_name || 'N/A'} - {selectedDriver.emergency_contact_phone || 'N/A'}</p>
                 <p><strong className="text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-widest block mb-1">Parent / Guardian:</strong> {selectedDriver.guardian_name || 'N/A'} - {selectedDriver.guardian_phone || 'N/A'}</p>
-                <p><strong className="text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-widest block mb-1">Guarantor:</strong> {selectedDriver.guarantor_name || 'N/A'} - {selectedDriver.guarantor_phone || 'N/A'} ({selectedDriver.guarantor_address || 'No address'})</p>
+                <p><strong className="text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-widest block mb-1">Sponsor:</strong> {selectedDriver.sponsor_name || 'N/A'} - {selectedDriver.sponsor_phone || 'N/A'} ({selectedDriver.sponsor_address || 'No address'})</p>
                 <p><strong className="text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-widest block mb-1">Assigned Vendor:</strong> {selectedDriver.vendor_name || 'None'}</p>
                 <p><strong className="text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-widest block mb-1">Total Deliveries:</strong> {selectedDriver.total_deliveries || 0}</p>
                 <p><strong className="text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-widest block mb-1">Rating:</strong> {selectedDriver.rating || 'N/A'}</p>

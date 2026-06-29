@@ -10,6 +10,7 @@ const customerRoutes = require('./routes/customerRoutes');
 const driverRoutes = require('./routes/driverRoutes');
 const authRoutes = require('./routes/authRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 const db = require('./config/db');
 const DriverModel = require('./models/driverModel');
 const NotificationModel = require('./models/notificationModel');
@@ -145,6 +146,7 @@ app.use('/api/driver', driverRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // ─── Root / Health Checks ─────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

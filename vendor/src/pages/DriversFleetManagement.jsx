@@ -21,9 +21,9 @@ const DriversFleetManagement = () => {
     emergency_contact_phone: '',
     guardian_name: '',
     guardian_phone: '',
-    guarantor_name: '',
-    guarantor_phone: '',
-    guarantor_address: ''
+    sponsor_name: '',
+    sponsor_phone: '',
+    sponsor_address: ''
   });
   const [message, setMessage] = useState('');
 
@@ -71,7 +71,7 @@ const DriversFleetManagement = () => {
           address: '', dob: '',
           emergency_contact_name: '', emergency_contact_phone: '',
           guardian_name: '', guardian_phone: '',
-          guarantor_name: '', guarantor_phone: '', guarantor_address: ''
+          sponsor_name: '', sponsor_phone: '', sponsor_address: ''
         });
         setMessage('Driver onboarded successfully! Credentials sent via email.');
         setTimeout(() => setMessage(''), 5000);
@@ -211,9 +211,6 @@ const DriversFleetManagement = () => {
               <button onClick={() => setShowModal(false)} className="material-symbols-outlined hover:bg-white/20 p-2 rounded-full transition-colors">close</button>
             </div>
             <form onSubmit={handleSubmit} className="p-8 space-y-6 overflow-y-auto">
-              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-blue-800 text-xs font-medium">
-                🔒 Security Notice: Passwords are auto-generated for security. Please ensure all contact information provided is accurate for verification purposes.
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">First Name</label>
@@ -261,37 +258,37 @@ const DriversFleetManagement = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Emergency Contact Name</label>
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Who to Call in Emergency</label>
                   <input required name="emergency_contact_name" value={formData.emergency_contact_name} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Emergency Contact Phone</label>
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Their Phone Number</label>
                   <input required name="emergency_contact_phone" value={formData.emergency_contact_phone} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Guardian Name</label>
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Parent or Guardian Name</label>
                   <input required name="guardian_name" value={formData.guardian_name} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Guardian Phone</label>
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Parent or Guardian Phone</label>
                   <input required name="guardian_phone" value={formData.guardian_phone} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Guarantor Name</label>
-                  <input required name="guarantor_name" value={formData.guarantor_name} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Sponsor Name (Reference Person)</label>
+                  <input required name="sponsor_name" value={formData.sponsor_name} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Guarantor Phone</label>
-                  <input required name="guarantor_phone" value={formData.guarantor_phone} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Sponsor Phone Number</label>
+                  <input required name="sponsor_phone" value={formData.sponsor_phone} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Guarantor Address</label>
-                <input required name="guarantor_address" value={formData.guarantor_address} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Sponsor Address</label>
+                <input required name="sponsor_address" value={formData.sponsor_address} onChange={handleInputChange} className="w-full bg-surface-container-high px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none" />
               </div>
               <div className="pt-4">
                 <button type="submit" className="w-full bg-primary text-on-primary py-4 rounded-2xl font-bold hover:bg-primary-dim transition-all shadow-lg shadow-primary-container">

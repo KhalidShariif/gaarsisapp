@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -130,6 +131,45 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
     );
   }
 
+  int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
+  int? _resolveVendorId(Map<String, dynamic> args) {
+    final directVendorId = _parseInt(args['vendor_id']);
+    if (directVendorId != null && directVendorId > 0) return directVendorId;
+
+    final vendor = args['vendor'];
+    if (vendor is Map) {
+      final vendorId = _parseInt(vendor['id'] ?? vendor['vendor_id']);
+      if (vendorId != null && vendorId > 0) return vendorId;
+    }
+
+    final items = args['items'];
+    if (items is List) {
+      for (final item in items) {
+        if (item is Map) {
+          final vendorId = _parseInt(item['vendor_id']);
+          if (vendorId != null && vendorId > 0) return vendorId;
+        }
+      }
+    }
+
+    final cartItems = args['cart_items'];
+    if (cartItems is List) {
+      for (final item in cartItems) {
+        if (item is CartItemModel && item.vendorId != null) {
+          return item.vendorId;
+        }
+      }
+    }
+
+    return 1;
+  }
+
   Future<void> _confirmAndPlaceOrder(Map<String, dynamic> args) async {
     setState(() {
       _isProcessing = true;
@@ -144,13 +184,27 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         paymentMethod != 'cash on delivery';
     setState(
       () => _processingStep = isOnlinePayment
-          ? 'Confirming WAAFI payment...'
+          ? 'Initiating payment request...'
           : 'Submitting order to vendor...',
     );
 
     try {
-      final response = await ApiService.post('/customer/orders', {
-        'vendor_id': args['vendor_id'],
+      final deliveryFee =
+          double.tryParse(args['delivery_fee']?.toString() ?? '0') ?? 0.0;
+      final effectiveDeliveryFee =
+          double.tryParse(args['effective_delivery_fee']?.toString() ?? '') ??
+          deliveryFee;
+      final vendorId = _resolveVendorId(args);
+      if (vendorId == null || vendorId <= 0) {
+        setState(() => _isProcessing = false);
+        _showPaymentErrorDialog(
+          'Vendor not found. Please go back and select the station again.',
+        );
+        return;
+      }
+
+      final Map<String, dynamic> payload = {
+        'vendor_id': vendorId,
         'delivery_address': args['delivery_address'],
         'delivery_phone': args['delivery_phone'],
         'delivery_addresses': args['delivery_addresses'],
@@ -161,42 +215,122 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         'external_merchant_payment': args['external_merchant_payment'] == true,
         'checkout_request_id': _newCheckoutRequestId(),
         'items': args['items'],
-        'delivery_fee': args['delivery_fee'],
-        'effective_delivery_fee': args['effective_delivery_fee'],
+        'delivery_fee': deliveryFee,
+        'effective_delivery_fee': effectiveDeliveryFee,
         'offer_id': args['offer_id'],
         // Scheduling (stored as notes if the DB supports it)
         if (args['delivery_date'] != null)
           'delivery_date': args['delivery_date'],
         if (args['delivery_slot'] != null)
           'delivery_slot': args['delivery_slot'],
-      });
+      };
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final resBody = jsonDecode(response.body);
-        final orderId = resBody['orderId'] ?? resBody['id'];
+      if (isOnlinePayment) {
+        final response = await ApiService.post('/payment/hurmood/create', payload);
 
-        // Clear cart locally
-        await CartService.clearCart();
-
-        setState(() {
-          _isProcessing = false;
-          _isOrderCreated = true;
-          _createdOrderId = orderId;
-        });
-      } else {
-        String errMsg = 'Failed to place order. Please try again.';
-        try {
+        if (response.statusCode == 200 || response.statusCode == 201) {
           final resBody = jsonDecode(response.body);
-          if (resBody['message'] != null) {
-            errMsg = resBody['message'];
-          }
-        } catch (_) {}
+          final transactionId = resBody['transactionId'];
 
-        setState(() => _isProcessing = false);
-        _showPaymentErrorDialog(errMsg);
+          setState(() {
+            _processingStep = 'Waiting for payment approval...\nPlease check your phone for EVC Plus PIN prompt.';
+          });
+
+          int pollCount = 0;
+          const maxPolls = 24; // ~1 minute max (2.5 seconds * 24)
+          Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
+            pollCount++;
+            if (!mounted) {
+              timer.cancel();
+              return;
+            }
+
+            if (pollCount > maxPolls) {
+              timer.cancel();
+              setState(() => _isProcessing = false);
+              _showPaymentErrorDialog('Payment timeout. If you confirmed the PIN, please check your orders history.');
+              return;
+            }
+
+            try {
+              final statusRes = await ApiService.get('/payment/status/$transactionId');
+              if (!mounted) {
+                timer.cancel();
+                return;
+              }
+
+              if (statusRes.statusCode == 200) {
+                final statusBody = jsonDecode(statusRes.body);
+                final status = statusBody['status']?.toString().toUpperCase();
+                final orderId = statusBody['orderId'];
+
+                if (status == 'SUCCESS') {
+                  timer.cancel();
+                  await CartService.clearCart();
+                  setState(() {
+                    _isProcessing = false;
+                    _isOrderCreated = true;
+                    _createdOrderId = orderId;
+                  });
+                } else if (status == 'FAILED' || status == 'CANCELLED') {
+                  timer.cancel();
+                  setState(() => _isProcessing = false);
+                  _showPaymentErrorDialog('Payment was declined or cancelled. Please try again.');
+                }
+              }
+            } catch (e) {
+              debugPrint('Error polling status: $e');
+            }
+          });
+        } else {
+          String errMsg = 'Failed to initiate payment. Please try again.';
+          try {
+            final resBody = jsonDecode(response.body);
+            if (resBody['message'] != null) {
+              errMsg = resBody['message'];
+            }
+          } catch (_) {}
+          setState(() => _isProcessing = false);
+          _showPaymentErrorDialog(errMsg);
+        }
+      } else {
+        // COD path - create order immediately
+        final response = await ApiService.post('/customer/orders', payload);
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final resBody = jsonDecode(response.body);
+          final orderId = resBody['orderId'] ?? resBody['id'];
+
+          await CartService.clearCart();
+
+          setState(() {
+            _isProcessing = false;
+            _isOrderCreated = true;
+            _createdOrderId = orderId;
+          });
+        } else {
+          String errMsg = 'Failed to place order. Please try again.';
+          var shouldClearStaleCart = false;
+          try {
+            final resBody = jsonDecode(response.body);
+            if (resBody['message'] != null) {
+              errMsg = resBody['message'];
+            }
+            shouldClearStaleCart = resBody['code'] == 'STALE_ORDER_DATA';
+          } catch (_) {}
+
+          if (shouldClearStaleCart) {
+            await CartService.clearCart();
+            errMsg =
+                '$errMsg\n\nYour old cart has been cleared. Please choose items again.';
+          }
+
+          setState(() => _isProcessing = false);
+          _showPaymentErrorDialog(errMsg);
+        }
       }
     } catch (e) {
-      debugPrint('DEBUG: Error placing order: $e');
+      debugPrint('DEBUG: Error processing checkout: $e');
       setState(() => _isProcessing = false);
       _showPaymentErrorDialog('Network error. Please check your connection.');
     }

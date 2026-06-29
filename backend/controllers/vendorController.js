@@ -448,7 +448,7 @@ class VendorController {
     const { 
       username, email, phone, first_name, last_name, vehicle_type, plate_number,
       address, dob, emergency_contact_name, emergency_contact_phone, guardian_name, guardian_phone,
-      guarantor_name, guarantor_phone, guarantor_address
+      sponsor_name, sponsor_phone, sponsor_address
     } = req.body;
 
     if (!email) {
@@ -467,7 +467,7 @@ class VendorController {
         first_name, last_name, vehicle_type, plate_number,
         vendor_id: vendorId,
         address, dob, emergency_contact_name, emergency_contact_phone, guardian_name, guardian_phone,
-        guarantor_name, guarantor_phone, guarantor_address
+        sponsor_name, sponsor_phone, sponsor_address
       });
 
       let emailSent = false;

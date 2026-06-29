@@ -533,9 +533,35 @@ class CustomerController {
         return res.status(400).json({ success: false, message: 'Every delivery point requires a phone number.' });
       }
 
-      const [vendorRows] = await db.query('SELECT latitude, longitude FROM vendors WHERE id = ?', [vendor_id]);
+      let resolvedVendorId = Number.parseInt(vendor_id, 10);
+      const productIdsForVendorLookup = items
+        .map((item) => Number.parseInt(item.product_id, 10))
+        .filter((id) => Number.isInteger(id) && id > 0);
+
+      let [vendorRows] = await db.query('SELECT latitude, longitude FROM vendors WHERE id = ?', [resolvedVendorId]);
       if (vendorRows.length === 0) {
-        return res.status(404).json({ success: false, message: 'Vendor not found.' });
+        const [productVendorRows] = productIdsForVendorLookup.length > 0
+          ? await db.query(
+              `SELECT DISTINCT vendor_id
+               FROM products
+               WHERE id IN (${productIdsForVendorLookup.map(() => '?').join(',')})`,
+              productIdsForVendorLookup
+            )
+          : [[]];
+
+        if (productVendorRows.length === 1) {
+          resolvedVendorId = Number(productVendorRows[0].vendor_id);
+          [vendorRows] = await db.query('SELECT latitude, longitude FROM vendors WHERE id = ?', [resolvedVendorId]);
+        }
+      }
+
+      if (vendorRows.length === 0) {
+        console.warn(`[ORDER VALIDATION] Vendor id=${vendor_id} not found; product_ids=${productIdsForVendorLookup.join(',')}`);
+        return res.status(409).json({
+          success: false,
+          code: 'STALE_ORDER_DATA',
+          message: 'This product or vendor is no longer available. Please clear your cart and choose Has again.',
+        });
       }
       const vendorLat = Number(vendorRows[0].latitude);
       const vendorLng = Number(vendorRows[0].longitude);
@@ -559,9 +585,14 @@ class CustomerController {
       const perKmFee = Number(process.env.DELIVERY_PER_KM_FEE || 0.5);
       const automaticDeliveryFee = Number((baseFee + routeDistanceKm * perKmFee).toFixed(2));
       const requestedDeliveryFee = Number(delivery_fee);
-      const clientDeliveryFee = Number.isFinite(requestedDeliveryFee) && requestedDeliveryFee >= 0
+      const hasClientDeliveryFee = delivery_fee !== undefined &&
+        delivery_fee !== null &&
+        delivery_fee !== '' &&
+        Number.isFinite(requestedDeliveryFee) &&
+        requestedDeliveryFee >= 0;
+      const clientDeliveryFee = hasClientDeliveryFee
         ? Number(requestedDeliveryFee.toFixed(2))
-        : 0;
+        : null;
       const requestedEffectiveDeliveryFee = Number(effective_delivery_fee);
       const hasClientEffectiveDeliveryFee = effective_delivery_fee !== undefined &&
         effective_delivery_fee !== null &&
@@ -581,7 +612,7 @@ class CustomerController {
             'payment_failed',
             null,
             io,
-            { vendorId: vendor_id }
+            { vendorId: resolvedVendorId }
           );
         } catch (notificationError) {
           console.error('Failed to send payment failure notification:', notificationError);
@@ -654,7 +685,9 @@ class CustomerController {
       const subtotal = validatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const fee = clientEffectiveDeliveryFee !== null
         ? clientEffectiveDeliveryFee
-        : (hasCompleteRouteCoordinates ? automaticDeliveryFee : clientDeliveryFee);
+        : (clientDeliveryFee !== null
+            ? clientDeliveryFee
+            : (hasCompleteRouteCoordinates ? automaticDeliveryFee : 0));
 
       if (subtotal <= 0) {
         console.warn(`[ORDER VALIDATION] Subtotal is zero or negative: ${subtotal}`);
@@ -666,16 +699,16 @@ class CustomerController {
       let applicableOffers = [];
 
       if (Number.isInteger(selectedOfferId) && selectedOfferId > 0) {
-        selectedOffer = await CustomerModel.getActiveOfferById(selectedOfferId, vendor_id);
+        selectedOffer = await CustomerModel.getActiveOfferById(selectedOfferId, resolvedVendorId);
         if (!selectedOffer) {
           return res.status(400).json({ success: false, message: 'Offer is no longer available.' });
         }
-        if (Number(selectedOffer.vendor_id) !== Number(vendor_id)) {
+        if (Number(selectedOffer.vendor_id) !== Number(resolvedVendorId)) {
           return res.status(400).json({ success: false, message: 'Selected offer does not belong to this vendor.' });
         }
         applicableOffers = [selectedOffer];
       } else {
-        const activeOffersData = await CustomerModel.getActiveOffers(vendor_id);
+        const activeOffersData = await CustomerModel.getActiveOffers(resolvedVendorId);
         applicableOffers = activeOffersData.offers;
       }
 
@@ -748,6 +781,8 @@ class CustomerController {
       const isExternalMerchantPayment = external_merchant_payment === true &&
         ['evc plus', 'evc_plus', 'zaad', 'sahal'].includes(normalizedPaymentMethod);
       let providerPayment = null;
+      let paymentStatus = 'pending'; // Default for online payments
+      
       if (!isCashPayment && !isExternalMerchantPayment) {
         if (!isWaafiPayment) {
           return res.status(400).json({ success: false, message: 'This online payment method is not configured.' });
@@ -755,22 +790,29 @@ class CustomerController {
         const WaafiService = require('../services/waafiService');
         providerPayment = await WaafiService.purchase({
           customerId: customer.id,
-          vendorId: vendor_id,
+          vendorId: resolvedVendorId,
           payerAccount: payment_phone,
           amount: grandTotal,
           description: `LPG delivery for customer ${customer.id}`,
           idempotencyKey: checkout_request_id,
         });
+        // Keep payment_status as 'pending' for WAAFI (will be updated by callback)
+        if (providerPayment?.status === 'successful') {
+          paymentStatus = 'paid';
+        }
+      } else if (isCashPayment) {
+        paymentStatus = 'pending'; // Cash on delivery - no payment yet
       }
 
       const orderId = await CustomerModel.createOrder({
         customer_id: customer.id,
-        vendor_id,
+        vendor_id: resolvedVendorId,
         total_amount: grandTotal,
         delivery_address,
         delivery_latitude: delivery_latitude ?? latitude,
         delivery_longitude: delivery_longitude ?? longitude,
         payment_method,
+        payment_status: paymentStatus,
         delivery_fee: effectiveDeliveryFee,
         distance_km: routeDistanceKm,
         destinations,
@@ -785,19 +827,19 @@ class CustomerController {
       await db.query(
         `INSERT INTO vendor_notifications (vendor_id, order_id, title, message, type)
          VALUES (?, ?, 'New order assignment', ?, 'order_assigned')`,
-        [vendor_id, orderId, `Order #${orderId} has been assigned to your business.`]
+        [resolvedVendorId, orderId, `Order #${orderId} has been assigned to your business.`]
       );
       if (io) {
-        io.to(`vendor-${vendor_id}`).emit('order-assignment-created', {
+        io.to(`vendor-${resolvedVendorId}`).emit('order-assignment-created', {
           order_id: orderId,
-          vendor_id: Number(vendor_id),
+          vendor_id: Number(resolvedVendorId),
           assigned_at: new Date().toISOString(),
         });
       }
 
       if (io) {
         io.emit('inventory-updated', {
-          vendor_id: Number(vendor_id),
+          vendor_id: Number(resolvedVendorId),
           product_ids: enrichedItems.map((item) => Number(item.product_id)),
         });
       }
@@ -825,29 +867,47 @@ class CustomerController {
           'order_created',
           orderId,
           io,
-          { vendorId: vendor_id, orderId }
+          { vendorId: resolvedVendorId, orderId }
         );
       } catch (notificationError) {
         console.error('Failed to send order notification:', notificationError);
       }
 
       if (!isCashPayment) {
-        try {
-          await NotificationModel.createAndSendUserNotification(
-            req.user.id,
-            'Payment successful',
-            `Payment for order #${orderId} was successful.`,
-            'payment_success',
-            orderId,
-            io,
-            { vendorId: vendor_id, orderId }
-          );
-        } catch (notificationError) {
-          console.error('Failed to send payment success notification:', notificationError);
+        if (paymentStatus === 'paid') {
+          // Immediate payment (e.g., successful WAAFI response)
+          try {
+            await NotificationModel.createAndSendUserNotification(
+              req.user.id,
+              'Payment successful',
+              `Payment for order #${orderId} was successful.`,
+              'payment_success',
+              orderId,
+              io,
+              { vendorId: resolvedVendorId, orderId }
+            );
+          } catch (notificationError) {
+            console.error('Failed to send payment success notification:', notificationError);
+          }
+        } else if (isWaafiPayment) {
+          // Pending WAAFI payment
+          try {
+            await NotificationModel.createAndSendUserNotification(
+              req.user.id,
+              'Payment pending',
+              `Please approve the EVC/WAAFI prompt on your phone for order #${orderId}.`,
+              'payment_pending',
+              orderId,
+              io,
+              { vendorId: resolvedVendorId, orderId }
+            );
+          } catch (notificationError) {
+            console.error('Failed to send payment pending notification:', notificationError);
+          }
         }
       }
 
-      console.log(`[ORDER] Order ${orderId} placed for customer ${customer.id}, total=${grandTotal}, discount=${discountAmount}, fee=${effectiveDeliveryFee}`);
+      console.log(`[ORDER] Order ${orderId} placed for customer ${customer.id}, total=${grandTotal}, discount=${discountAmount}, fee=${effectiveDeliveryFee}, paymentStatus=${paymentStatus}`);
       res.status(201).json({
         message: 'Order placed successfully',
         orderId,
@@ -856,8 +916,11 @@ class CustomerController {
         delivery_fee: effectiveDeliveryFee,
         offer_description: offerDescription,
         offer_id: selectedOffer?.id || null,
+        payment_status: paymentStatus,
+        payment_message: isWaafiPayment && paymentStatus === 'pending' ? 'Please approve the EVC/WAAFI prompt on your phone.' : undefined,
         payment_transaction_id: providerPayment?.transactionId || null,
-        payment_reference_id: providerPayment?.referenceId || null
+        payment_reference_id: providerPayment?.referenceId || null,
+        payment_attempt_id: providerPayment?.attemptId || null
       });
     } catch (error) {
       console.error('Customer Create Order Error:', error);
@@ -989,6 +1052,83 @@ class CustomerController {
         success: false,
         message: 'Failed to fetch spare parts vendors and products'
       });
+    }
+  }
+
+  static async handleWaafiPaymentCallback(req, res) {
+    try {
+      const { responseCode, transactionId, referenceId, invoiceId, responseMsg } = req.body;
+      
+      console.log(`[WAAFI CALLBACK] Received: code=${responseCode}, transactionId=${transactionId}, referenceId=${referenceId}, message=${responseMsg}`);
+
+      if (!referenceId) {
+        console.warn('[WAAFI CALLBACK] Missing referenceId in callback');
+        return res.status(400).json({ success: false, message: 'Missing referenceId' });
+      }
+
+      // Find the payment attempt
+      const [attempts] = await db.query(
+        'SELECT * FROM payment_attempts WHERE reference_id = ?',
+        [referenceId]
+      );
+
+      if (!attempts || attempts.length === 0) {
+        console.warn(`[WAAFI CALLBACK] No payment attempt found for referenceId=${referenceId}`);
+        return res.status(404).json({ success: false, message: 'Payment attempt not found' });
+      }
+
+      const attempt = attempts[0];
+      const SUCCESS_CODE = '2001';
+      const isSuccessful = responseCode === SUCCESS_CODE;
+      const newStatus = isSuccessful ? 'successful' : (responseCode === '5310' ? 'cancelled' : 'failed');
+
+      console.log(`[WAAFI CALLBACK] Updating payment attempt ID=${attempt.id}: status=${newStatus}, code=${responseCode}`);
+
+      // Update payment attempt
+      await db.query(
+        `UPDATE payment_attempts 
+         SET status = ?, response_code = ?, provider_transaction_id = ?, response_message = ?, raw_response = ?
+         WHERE id = ?`,
+        [newStatus, responseCode, transactionId || null, responseMsg || null, JSON.stringify(req.body), attempt.id]
+      );
+
+      // If order exists, update order payment status
+      if (attempt.order_id) {
+        const orderPaymentStatus = isSuccessful ? 'paid' : (newStatus === 'cancelled' ? 'pending' : 'failed');
+        await db.query(
+          'UPDATE orders SET payment_status = ? WHERE id = ?',
+          [orderPaymentStatus, attempt.order_id]
+        );
+
+        console.log(`[WAAFI CALLBACK] Updated order ${attempt.order_id}: payment_status=${orderPaymentStatus}`);
+
+        // Send notification to customer
+        try {
+          const notificationTitle = isSuccessful ? 'Payment confirmed' : (newStatus === 'cancelled' ? 'Payment cancelled' : 'Payment failed');
+          const notificationMessage = isSuccessful 
+            ? `Payment for order #${attempt.order_id} was confirmed.`
+            : (newStatus === 'cancelled'
+              ? `Payment for order #${attempt.order_id} was cancelled. Please try again or use another payment method.`
+              : `Payment for order #${attempt.order_id} failed. Please try again.`);
+
+          await NotificationModel.createAndSendUserNotification(
+            attempt.customer_id,
+            notificationTitle,
+            notificationMessage,
+            isSuccessful ? 'payment_success' : 'payment_failed',
+            attempt.order_id,
+            null,
+            { orderId: attempt.order_id }
+          );
+        } catch (notificationError) {
+          console.error('[WAAFI CALLBACK] Failed to send notification:', notificationError);
+        }
+      }
+
+      res.json({ success: true, message: 'Payment callback processed' });
+    } catch (error) {
+      console.error('[WAAFI CALLBACK] Error:', error);
+      res.status(500).json({ success: false, message: 'Failed to process payment callback' });
     }
   }
 }

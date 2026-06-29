@@ -73,7 +73,7 @@ class DriverModel {
     const { 
       username, email, phone, password_hash, first_name, last_name, vehicle_type, plate_number, vendor_id,
       address, dob, emergency_contact_name, emergency_contact_phone, guardian_name, guardian_phone,
-      guarantor_name, guarantor_phone, guarantor_address
+      sponsor_name, sponsor_phone, sponsor_address
     } = driverData;
     
     const connection = await db.getConnection();
@@ -92,14 +92,14 @@ class DriverModel {
         `INSERT INTO drivers (
           user_id, first_name, last_name, vehicle_type, license_number, vendor_id, 
           verification_status, is_online, address, dob, emergency_contact_name, 
-          emergency_contact_phone, guardian_name, guardian_phone, guarantor_name, 
-          guarantor_phone, guarantor_address
+          emergency_contact_phone, guardian_name, guardian_phone, sponsor_name, 
+          sponsor_phone, sponsor_address
         ) VALUES (?, ?, ?, ?, ?, ?, "verified", 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId, first_name, last_name, vehicle_type, plate_number, vendor_id,
           address || null, dob || null, emergency_contact_name || null,
           emergency_contact_phone || null, guardian_name || null, guardian_phone || null,
-          guarantor_name || null, guarantor_phone || null, guarantor_address || null
+          sponsor_name || null, sponsor_phone || null, sponsor_address || null
         ]
       );
 

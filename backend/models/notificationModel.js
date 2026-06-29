@@ -13,6 +13,7 @@ const CUSTOMER_NOTIFICATION_TYPES = [
   'offer_updated',
   'payment_success',
   'payment_failed',
+  'payment_pending',
 ];
 
 class NotificationModel {

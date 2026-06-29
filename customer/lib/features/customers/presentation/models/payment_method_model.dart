@@ -8,6 +8,7 @@ class PaymentMethodModel {
   final String? imageUrl;
   final IconData? icon;
   final PaymentType type;
+
   /// The exact string sent to the backend as payment_method
   final String apiKey;
 
@@ -30,7 +31,7 @@ class PaymentMethodModel {
     ),
     PaymentMethodModel(
       name: 'Wallet',
-      subtitle: 'Pay using your Waafiy wallet',
+      subtitle: 'WAAFI/EVC prompt will be sent to your phone',
       imageUrl: 'assets/images/image.png',
       type: PaymentType.waafiy,
       apiKey: 'Wallet',

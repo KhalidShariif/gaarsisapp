@@ -5,6 +5,8 @@ const { authenticateToken } = require('../middlewares/authMiddleware');
 
 router.post('/register', CustomerController.register);
 router.post('/login', CustomerController.login);
+// WAAFI payment callback - no authentication required
+router.post('/payment/waafi/callback', CustomerController.handleWaafiPaymentCallback);
 router.get('/vendors-search', CustomerController.getVendorsByProduct);
 router.get('/spare-parts/vendors-products', CustomerController.getSparePartsVendorsProducts);
 

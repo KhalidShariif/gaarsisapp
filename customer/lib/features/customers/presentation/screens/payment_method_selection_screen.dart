@@ -115,7 +115,12 @@ class _PaymentMethodSelectionScreenState
 
         args['vendor_id'] = vendorId;
         args['items'] = [
-          {'product_id': productId, 'quantity': quantity, 'price': price},
+          {
+            'product_id': productId,
+            'vendor_id': vendorId,
+            'quantity': quantity,
+            'price': price,
+          },
         ];
         args['subtotal'] = subtotal;
         args['delivery_fee'] = args['delivery_fee'] ?? 0;
@@ -222,6 +227,10 @@ class _PaymentMethodSelectionScreenState
   bool _opensMerchantDialer(PaymentMethodModel method) =>
       _merchantCodes.containsKey(method.name);
 
+  bool _usesWaafiPrompt(PaymentMethodModel method) =>
+      method.type == PaymentType.waafiy ||
+      method.apiKey.toLowerCase() == 'wallet';
+
   double _grandTotal(Map<String, dynamic> args) {
     final subtotal =
         double.tryParse(args['subtotal']?.toString() ?? '0') ?? 0.0;
@@ -284,7 +293,41 @@ class _PaymentMethodSelectionScreenState
     );
   }
 
-  void _proceedToReview() {
+  Future<bool> _confirmWaafiPrompt(
+    PaymentMethodModel method,
+    String phone,
+    double amount,
+  ) async {
+    if (!_usesWaafiPrompt(method)) return true;
+    if (!mounted) return false;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Approve WAAFI Payment'),
+        content: Text(
+          'WAAFI/EVC request ayaa loo dirayaa $phone.\n\n'
+          'Marka prompt-ku telefoonkaaga ka soo baxo, fadlan taabo Approve/OK si aad u bixiso USD ${amount.toStringAsFixed(2)}.\n\n'
+          'Haddii aad Cancel taabato ama prompt-ku kaa dhaco, payment-ku wuu fashilmayaa.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('I am ready'),
+          ),
+        ],
+      ),
+    );
+
+    return confirmed == true;
+  }
+
+  Future<void> _proceedToReview() async {
     if (_selectedMethodIndex == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -315,6 +358,14 @@ class _PaymentMethodSelectionScreenState
 
     // Build the full order details to pass to Order Review
     final args = _resolvedOrderArgs();
+    final paymentPhone = _cashPhoneController.text.isNotEmpty
+        ? _cashPhoneController.text
+        : _mobilePhoneController.text;
+    final amount = _grandTotal(args);
+
+    final canContinue = await _confirmWaafiPrompt(method, paymentPhone, amount);
+    if (!canContinue || !mounted) return;
+
     Navigator.pushNamed(
       context,
       AppRoutes.confirmation,
@@ -344,9 +395,7 @@ class _PaymentMethodSelectionScreenState
         'payment_method': method.apiKey,
         'payment_method_name': method.name,
         'external_merchant_payment': _opensMerchantDialer(method),
-        'payment_phone': _cashPhoneController.text.isNotEmpty
-            ? _cashPhoneController.text
-            : _mobilePhoneController.text,
+        'payment_phone': paymentPhone,
       },
     );
   }

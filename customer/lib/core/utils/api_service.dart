@@ -49,8 +49,11 @@ class ApiService {
       if (defaultTargetPlatform == TargetPlatform.android) {
         return kDebugMode
             ? const [
+                'https://power-way-cooked-draw.trycloudflare.com/api', // ✅ Cloudflare tunnel (works on any network)
+                'http://10.212.216.76:5001/api', // Current active Ethernet IP
+                'http://172.20.10.6:5001/api', // Current PC Wi-Fi IP
                 'http://localhost:5001/api', // USB reverse port forwarding
-                'http://10.94.228.5:5001/api', // Current PC Wi-Fi IP
+                'http://10.94.228.5:5001/api', // Previous PC Wi-Fi IP
                 'http://10.0.2.2:5001/api', // Android Emulator loopback
               ]
             : const [];
@@ -136,8 +139,9 @@ class ApiService {
       return true;
     } catch (e) {
       print('DEBUG: Connection check failed: $e');
+      final triedUrls = _candidateBaseUrls.join(', ');
       _lastConnectionError =
-          'Cannot reach the delivery server at $_activeBaseUrl. Check your internet connection and try again.';
+          'Cannot reach the delivery server. Tried: $triedUrls. Make sure your phone is on the same Wi-Fi as the backend PC.';
       return false;
     }
   }

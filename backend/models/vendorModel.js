@@ -113,7 +113,10 @@ class VendorModel {
       FROM orders o
       JOIN customers c ON o.customer_id = c.id
       JOIN users u ON c.user_id = u.id
-      WHERE o.vendor_id = ?
+      WHERE o.vendor_id = ? AND (
+        LOWER(o.payment_method) IN ('cod', 'cash_on_delivery', 'cash on delivery')
+        OR LOWER(o.payment_status) = 'paid'
+      )
       ORDER BY o.created_at DESC
     `, [vendorId]);
     return rows;
