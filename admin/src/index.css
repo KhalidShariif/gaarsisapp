@@ -21,3 +21,26 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@layer components {
+  @media (max-width: 767px) {
+    table {
+      display: block;
+      width: 100%;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    th,
+    td {
+      padding-left: 1rem !important;
+      padding-right: 1rem !important;
+    }
+
+    .leaflet-container,
+    .recharts-responsive-container {
+      min-height: 260px;
+    }
+  }
+}

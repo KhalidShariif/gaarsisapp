@@ -38,7 +38,7 @@ const navItems = [
   { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ isMobile = false, onClose }) => {
   const navigate = useNavigate();
   const { vendor } = useVendorProfile();
   const vendorName = getVendorDisplayName(vendor);
@@ -56,7 +56,7 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="w-64 bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col h-screen sticky top-0 font-body">
+    <aside className={`${isMobile ? 'w-full' : 'w-64'} bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col h-screen sticky top-0 font-body`}>
       {/* Logo Area */}
       <div className="h-20 flex items-center px-8">
         <div>
@@ -72,6 +72,7 @@ const Sidebar = () => {
             <li key={item.name}>
               <NavLink
                 to={item.path}
+                onClick={onClose}
                 className={({ isActive }) =>
                   `flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group ${
                     isActive

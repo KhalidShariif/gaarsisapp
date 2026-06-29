@@ -492,6 +492,7 @@ class CustomerController {
       payment_phone
       , checkout_request_id
       , external_merchant_payment = false
+      , effective_delivery_fee
     } = req.body;
 
     // --- INPUT GUARDS ---
@@ -561,6 +562,15 @@ class CustomerController {
       const clientDeliveryFee = Number.isFinite(requestedDeliveryFee) && requestedDeliveryFee >= 0
         ? Number(requestedDeliveryFee.toFixed(2))
         : 0;
+      const requestedEffectiveDeliveryFee = Number(effective_delivery_fee);
+      const hasClientEffectiveDeliveryFee = effective_delivery_fee !== undefined &&
+        effective_delivery_fee !== null &&
+        effective_delivery_fee !== '' &&
+        Number.isFinite(requestedEffectiveDeliveryFee) &&
+        requestedEffectiveDeliveryFee >= 0;
+      const clientEffectiveDeliveryFee = hasClientEffectiveDeliveryFee
+        ? Number(requestedEffectiveDeliveryFee.toFixed(2))
+        : null;
 
       if (req.body.payment_failed === true || String(req.body.payment_status || '').toLowerCase() === 'failed') {
         try {
@@ -642,7 +652,9 @@ class CustomerController {
 
       // --- CALCULATE TOTALS SERVER-SIDE ---
       const subtotal = validatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      const fee = hasCompleteRouteCoordinates ? automaticDeliveryFee : clientDeliveryFee;
+      const fee = clientEffectiveDeliveryFee !== null
+        ? clientEffectiveDeliveryFee
+        : (hasCompleteRouteCoordinates ? automaticDeliveryFee : clientDeliveryFee);
 
       if (subtotal <= 0) {
         console.warn(`[ORDER VALIDATION] Subtotal is zero or negative: ${subtotal}`);

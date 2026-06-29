@@ -18,7 +18,7 @@ import {
   BarChart3
 } from 'lucide-react';
 
-const Sidebar = () => {
+const Sidebar = ({ isMobile = false, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
@@ -49,7 +49,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-slate-900 text-white flex flex-col h-screen fixed inset-y-0 left-0 z-50 transition-all duration-300 border-r border-slate-800 shadow-2xl`}>
+    <aside className={`${isMobile ? 'w-full relative' : `${isCollapsed ? 'w-20' : 'w-64'} fixed inset-y-0 left-0`} bg-slate-900 text-white flex flex-col h-screen z-50 transition-all duration-300 border-r border-slate-800 shadow-2xl`}>
       <div className="h-20 flex items-center px-6 border-b border-slate-800/50 justify-between">
         {!isCollapsed && (
            <h1 className="text-xl font-bold tracking-tighter flex items-center gap-2">
@@ -57,9 +57,11 @@ const Sidebar = () => {
              FuelDirect
            </h1>
         )}
-        <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400">
-          {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
+        {!isMobile && (
+          <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400">
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto no-scrollbar">
@@ -70,6 +72,7 @@ const Sidebar = () => {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onClose}
               className={({ isActive }) => `
                 flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group
                 ${isActive 

@@ -38,3 +38,26 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+@layer components {
+  @media (max-width: 767px) {
+    table {
+      display: block;
+      width: 100%;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    th,
+    td {
+      padding-left: 1rem !important;
+      padding-right: 1rem !important;
+    }
+
+    .recharts-responsive-container,
+    .leaflet-container {
+      min-height: 260px;
+    }
+  }
+}

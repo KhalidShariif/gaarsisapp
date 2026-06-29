@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Bell, CheckCircle2, PackageOpen, Truck, X } from 'lucide-react';
+import { Search, Bell, CheckCircle2, Menu, PackageOpen, Truck, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import VendorAvatar from './VendorAvatar';
@@ -7,7 +7,7 @@ import { useVendorProfile } from '../hooks/useVendorProfile';
 import { getVendorDisplayName } from '../utils/vendorIdentity';
 import api, { SOCKET_URL } from '../utils/api';
 
-const Topbar = () => {
+const Topbar = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { vendor } = useVendorProfile();
   const vendorName = getVendorDisplayName(vendor);
@@ -162,9 +162,18 @@ const Topbar = () => {
   };
 
   return (
-    <header className="h-20 bg-surface border-b border-outline-variant/20 px-8 flex items-center justify-between sticky top-0 z-10 font-body">
+    <header className="h-16 sm:h-20 bg-surface border-b border-outline-variant/20 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 sticky top-0 z-10 font-body">
+      <button
+        type="button"
+        onClick={onMenuClick}
+        className="lg:hidden p-2 -ml-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl transition-colors"
+        aria-label="Open navigation"
+      >
+        <Menu size={22} />
+      </button>
+
       {/* Search Bar */}
-      <div className="flex-1 max-w-xl relative">
+      <div className="hidden sm:block flex-1 max-w-xl relative">
         <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-outline pointer-events-none">
           <Search size={18} />
         </span>
@@ -176,7 +185,7 @@ const Topbar = () => {
       </div>
 
       {/* Right Tools - Notification & Profile */}
-      <div className="flex items-center gap-6 ml-4">
+      <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 sm:ml-4">
         {/* Notifications */}
         <div className="relative">
           <button

@@ -46,6 +46,90 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
     );
   }
 
+  String _readablePaymentMessage(String message) {
+    var cleaned = message.trim();
+    final paymentFailedPrefix = RegExp(
+      r'^Payment Failed\s*\(',
+      caseSensitive: false,
+    );
+
+    cleaned = cleaned.replaceFirst(paymentFailedPrefix, '');
+    if (cleaned.endsWith(')')) {
+      cleaned = cleaned.substring(0, cleaned.length - 1).trim();
+    }
+
+    return cleaned.isEmpty
+        ? 'Payment failed. Please check your wallet balance and try again.'
+        : cleaned;
+  }
+
+  Future<void> _showPaymentErrorDialog(String message) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final cs = theme.colorScheme;
+        final isDark = theme.brightness == Brightness.dark;
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusL),
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          title: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withAlpha(30),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.error_outline, color: Colors.redAccent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Payment Failed',
+                  style: TextStyle(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 260),
+            child: SingleChildScrollView(
+              child: Text(
+                _readablePaymentMessage(message),
+                style: TextStyle(
+                  color: isDark
+                      ? AppColors.textSecondaryDark
+                      : AppColors.textSecondary,
+                  fontSize: 15,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _confirmAndPlaceOrder(Map<String, dynamic> args) async {
     setState(() {
       _isProcessing = true;
@@ -78,6 +162,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         'checkout_request_id': _newCheckoutRequestId(),
         'items': args['items'],
         'delivery_fee': args['delivery_fee'],
+        'effective_delivery_fee': args['effective_delivery_fee'],
         'offer_id': args['offer_id'],
         // Scheduling (stored as notes if the DB supports it)
         if (args['delivery_date'] != null)
@@ -108,12 +193,12 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         } catch (_) {}
 
         setState(() => _isProcessing = false);
-        _showErrorSnackBar(errMsg);
+        _showPaymentErrorDialog(errMsg);
       }
     } catch (e) {
       debugPrint('DEBUG: Error placing order: $e');
       setState(() => _isProcessing = false);
-      _showErrorSnackBar('Network error. Please check your connection.');
+      _showPaymentErrorDialog('Network error. Please check your connection.');
     }
   }
 

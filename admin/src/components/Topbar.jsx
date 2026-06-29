@@ -1,9 +1,9 @@
 import React from 'react';
-import { Search, Bell, Settings, Users, Store, ClipboardList, Moon, Sun, User, LogOut } from 'lucide-react';
+import { Search, Bell, Settings, Users, Store, ClipboardList, Moon, Sun, Menu, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 
-const Topbar = ({ title }) => {
+const Topbar = ({ title, onMenuClick }) => {
   const navigate = useNavigate();
   const [query, setQuery] = React.useState('');
   const [results, setResults] = React.useState([]);
@@ -121,13 +121,21 @@ const Topbar = ({ title }) => {
   }, [query]);
 
   return (
-    <header className="h-20 fixed top-0 right-0 left-64 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/40 z-40 px-10 flex items-center justify-between">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h2>
+    <header className="h-16 sm:h-20 fixed top-0 right-0 left-0 lg:left-64 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/40 z-40 px-4 sm:px-6 lg:px-10 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="lg:hidden p-2 -ml-1 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+          aria-label="Open navigation"
+        >
+          <Menu size={22} />
+        </button>
+        <h2 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight truncate">{title}</h2>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="relative group w-[320px]">
+      <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
+        <div className="relative group w-[320px] hidden md:block">
           <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searching ? 'text-primary-500 animate-pulse' : 'text-slate-500 dark:text-slate-400'}`} />
           <input 
             type="text" 
