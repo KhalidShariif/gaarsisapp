@@ -27,6 +27,23 @@ async function sendInitialPassword({ email, name, password }) {
   });
 }
 
+async function sendPasswordReset({ email, name, password }) {
+  assertEmailConfigured();
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+  });
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: 'Your vendor password has been reset',
+    text: `Hello ${name || 'Vendor'},\n\nYour temporary password is: ${password}\n\nSign in and change it immediately from Settings > Security. Do not share this password.`,
+    html: `<p>Hello ${name || 'Vendor'},</p><p>Your temporary password is:</p><p><strong>${password}</strong></p><p>Sign in and change it immediately from <strong>Settings &gt; Security</strong>. Do not share this password.</p>`
+  });
+}
+
 async function verifyEmailTransport() {
   assertEmailConfigured();
   const transporter = nodemailer.createTransport({
@@ -38,4 +55,4 @@ async function verifyEmailTransport() {
   await transporter.verify();
 }
 
-module.exports = { assertEmailConfigured, sendInitialPassword, verifyEmailTransport };
+module.exports = { assertEmailConfigured, sendInitialPassword, sendPasswordReset, verifyEmailTransport };

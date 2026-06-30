@@ -4,6 +4,7 @@ const CustomerModel = require('../models/customerModel');
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 class VendorController {
 
@@ -917,6 +918,79 @@ class VendorController {
     } catch (error) {
       console.error('Vendor Login Error:', error);
       res.status(500).json({ message: 'Login failed' });
+    }
+  }
+
+  static async forgotPassword(req, res) {
+    const { email } = req.body || {};
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return res.status(400).json({ success: false, message: 'Email is required.' });
+    }
+
+    try {
+      const { assertEmailConfigured, sendPasswordReset } = require('../utils/emailService');
+      assertEmailConfigured();
+
+      const [vendors] = await db.query(
+        `SELECT v.id, v.user_id, v.email, v.business_name, v.name
+         FROM vendors v
+         WHERE LOWER(v.email) = ?
+         LIMIT 1`,
+        [normalizedEmail]
+      );
+
+      if (vendors.length === 0) {
+        return res.json({
+          success: true,
+          message: 'If this vendor email exists, a temporary password will be sent.',
+        });
+      }
+
+      const vendor = vendors[0];
+      const temporaryPassword = crypto.randomBytes(9).toString('base64url');
+      const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+
+      await db.query('UPDATE vendors SET password = ? WHERE id = ?', [passwordHash, vendor.id]);
+      if (vendor.user_id) {
+        await db.query(
+          'UPDATE users SET password_hash = ?, must_change_password = 1, password_changed_at = NULL WHERE id = ?',
+          [passwordHash, vendor.user_id]
+        ).catch(() => {});
+      } else {
+        await db.query(
+          'UPDATE users SET password_hash = ?, must_change_password = 1, password_changed_at = NULL WHERE LOWER(email) = ?',
+          [passwordHash, normalizedEmail]
+        ).catch(() => {});
+      }
+
+      try {
+        await sendPasswordReset({
+          email: normalizedEmail,
+          name: vendor.business_name || vendor.name || 'Vendor',
+          password: temporaryPassword,
+        });
+      } catch (emailError) {
+        console.warn('[VENDOR PASSWORD RESET] Email delivery failed:', emailError.message);
+        return res.status(emailError.statusCode || 503).json({
+          success: false,
+          message: 'Password was reset, but email delivery is not configured. Please contact the admin.',
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'A temporary password has been sent to your email.',
+      });
+    } catch (error) {
+      console.error('Vendor Forgot Password Error:', error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.statusCode
+          ? 'Password reset email is not configured. Please contact the admin.'
+          : 'Failed to reset vendor password.',
+      });
     }
   }
 

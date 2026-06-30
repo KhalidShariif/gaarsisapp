@@ -20,6 +20,7 @@ router.post('/vendors', AdminController.createVendor);
 router.get('/vendors/:id', AdminController.getVendorById);
 router.put('/vendors/:id', AdminController.updateVendor);
 router.delete('/vendors/:id', AdminController.deleteVendor);
+router.post('/vendors/:id/reset-password', AdminController.resetVendorPassword);
 
 router.get('/drivers', AdminController.getDrivers);
 router.post('/drivers', AdminController.createDriver);

@@ -8,6 +8,10 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
@@ -35,6 +39,25 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setResetLoading(true);
+    setResetMessage('');
+    setError('');
+    try {
+      const response = await api.post('/vendor/forgot-password', {
+        email: resetEmail || email,
+      });
+      setResetMessage(response.data?.message || 'Temporary password sent to your email.');
+    } catch (err) {
+      console.error(err);
+      setResetMessage(err.response?.data?.message || 'Failed to send reset email. Contact admin.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-surface-container font-body flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-[440px]">
@@ -84,7 +107,17 @@ const Login = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant" htmlFor="password">Password</label>
-                <button type="button" className="text-[10px] font-bold text-primary hover:underline">Forgot?</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetEmail(email);
+                    setResetMessage('');
+                    setShowReset(true);
+                  }}
+                  className="text-[10px] font-bold text-primary hover:underline"
+                >
+                  Forgot?
+                </button>
               </div>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-on-surface-variant">
@@ -133,6 +166,52 @@ const Login = () => {
       <div className="fixed inset-0 -z-10 opacity-5 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent"></div>
       </div>
+
+      {showReset && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-3xl bg-surface-container-lowest border border-outline-variant/20 shadow-2xl p-8">
+            <h2 className="font-headline text-2xl font-bold text-on-surface mb-2">Reset Vendor Password</h2>
+            <p className="text-sm text-on-surface-variant mb-6">
+              Enter your vendor email. A temporary password will be sent to that Gmail/email address.
+            </p>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant px-1" htmlFor="reset-email">Vendor Email</label>
+                <input
+                  id="reset-email"
+                  className="block w-full px-4 py-3.5 bg-surface-container-low border border-outline-variant/10 rounded-2xl text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
+                  placeholder="vendor@gmail.com"
+                />
+              </div>
+              {resetMessage && (
+                <p className="text-xs font-bold text-primary bg-primary/10 rounded-2xl px-4 py-3">
+                  {resetMessage}
+                </p>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowReset(false)}
+                  className="px-5 py-3 rounded-2xl text-sm font-bold text-on-surface-variant hover:text-on-surface"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="px-6 py-3 rounded-2xl text-sm font-bold text-on-primary bg-primary hover:bg-primary-dim disabled:opacity-50"
+                >
+                  {resetLoading ? 'Sending...' : 'Send Reset'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

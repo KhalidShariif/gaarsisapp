@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const crypto = require('crypto');
-const { assertEmailConfigured, verifyEmailTransport, sendInitialPassword } = require('../utils/emailService');
+const { assertEmailConfigured, verifyEmailTransport, sendInitialPassword, sendPasswordReset } = require('../utils/emailService');
 
 class AdminController {
   static async login(req, res) {
@@ -158,6 +158,70 @@ class AdminController {
       res.json({ message: 'Vendor safely deactivated.' });
     } catch (error) {
       res.status(error.statusCode || 500).json({ message: error.message || 'Failed to delete vendor.' });
+    }
+  }
+
+  static async resetVendorPassword(req, res) {
+    try {
+      const vendorId = Number.parseInt(req.params.id, 10);
+      if (!Number.isInteger(vendorId) || vendorId <= 0) {
+        return res.status(400).json({ message: 'Invalid vendor id.' });
+      }
+
+      const [vendors] = await db.query(
+        `SELECT id, user_id, email, business_name, name
+         FROM vendors
+         WHERE id = ?
+         LIMIT 1`,
+        [vendorId]
+      );
+      if (vendors.length === 0) {
+        return res.status(404).json({ message: 'Vendor not found.' });
+      }
+
+      const vendor = vendors[0];
+      if (!vendor.email) {
+        return res.status(400).json({ message: 'Vendor does not have an email address.' });
+      }
+
+      const temporaryPassword = crypto.randomBytes(9).toString('base64url');
+      const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+
+      await db.query('UPDATE vendors SET password = ? WHERE id = ?', [passwordHash, vendorId]);
+      if (vendor.user_id) {
+        await db.query(
+          'UPDATE users SET password_hash = ?, must_change_password = 1, password_changed_at = NULL WHERE id = ?',
+          [passwordHash, vendor.user_id]
+        ).catch(() => {});
+      } else {
+        await db.query(
+          'UPDATE users SET password_hash = ?, must_change_password = 1, password_changed_at = NULL WHERE LOWER(email) = ?',
+          [passwordHash, String(vendor.email).toLowerCase()]
+        ).catch(() => {});
+      }
+
+      let emailSent = false;
+      try {
+        await sendPasswordReset({
+          email: vendor.email,
+          name: vendor.business_name || vendor.name || 'Vendor',
+          password: temporaryPassword,
+        });
+        emailSent = true;
+      } catch (emailError) {
+        console.warn('[ADMIN VENDOR RESET] Email delivery failed:', emailError.message);
+      }
+
+      res.json({
+        message: emailSent
+          ? 'Vendor password reset and emailed successfully.'
+          : 'Vendor password reset. Email is not configured, share the temporary password manually.',
+        emailSent,
+        temporaryPassword: emailSent ? undefined : temporaryPassword,
+      });
+    } catch (error) {
+      console.error('Reset Vendor Password Error:', error);
+      res.status(500).json({ message: 'Failed to reset vendor password.' });
     }
   }
 

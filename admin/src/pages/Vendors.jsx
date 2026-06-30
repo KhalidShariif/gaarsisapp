@@ -16,7 +16,8 @@ import {
   Search,
   Trash2,
   Edit2,
-  CheckCircle
+  CheckCircle,
+  KeyRound
 } from 'lucide-react';
 import { filterMockData } from '../utils/filterMockData';
 
@@ -218,6 +219,20 @@ const VendorsPage = () => {
       fetchVendors();
     } catch (err) {
       console.error('Delete vendor error', err);
+    }
+  };
+
+  const handleResetPassword = async (vendor) => {
+    if (!window.confirm(`Reset password for ${vendor.display_name || vendor.business_name || vendor.name || 'this vendor'}?`)) return;
+    try {
+      const response = await api.post(`/admin/vendors/${vendor.id}/reset-password`);
+      const tempPassword = response.data?.temporaryPassword;
+      alert(tempPassword
+        ? `${response.data.message}\n\nTemporary password: ${tempPassword}`
+        : (response.data.message || 'Password reset email sent.'));
+    } catch (err) {
+      console.error('Reset vendor password error', err);
+      alert(err.response?.data?.message || 'Failed to reset vendor password.');
     }
   };
 
@@ -526,6 +541,9 @@ const VendorsPage = () => {
                         )}
                         <button onClick={() => handleEditVendor(v)} className="p-2 text-slate-400 hover:text-primary-600" title="Edit Profile">
                           <Edit2 size={14} />
+                        </button>
+                        <button onClick={() => handleResetPassword(v)} className="p-2 text-slate-400 hover:text-amber-600" title="Reset Password">
+                          <KeyRound size={14} />
                         </button>
                         <button onClick={() => handleDeleteVendor(v.id)} className="p-2 text-slate-400 hover:text-red-600">
                            <Trash2 size={14} />

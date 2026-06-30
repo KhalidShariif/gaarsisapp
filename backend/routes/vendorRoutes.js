@@ -82,6 +82,7 @@ router.put('/offers/:id', authenticateToken, VendorController.updateOffer);
 router.delete('/offers/:id', authenticateToken, VendorController.deleteOffer);
 router.post('/purchase', authenticateToken, VendorController.createPurchase);
 router.post('/login', VendorController.login);
+router.post('/forgot-password', VendorController.forgotPassword);
 router.post('/register', VendorController.register);
 router.get('/profile', authenticateToken, VendorController.getProfile);
 router.put('/profile/:vendorId', authenticateToken, VendorController.updateProfile);
